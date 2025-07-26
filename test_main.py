@@ -65,7 +65,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_classes = args.test_classes
-    test_class_list = [globals()[name] for name in test_classes]
+    # test_class_list = [globals()[name] for name in test_classes]
+    test_classes_2 = ["Contrast_Detection_SpF_Gabor_Ach", "Contrast_Detection_Luminance", "Contrast_Detection_Area", "Contrast_Masking_Phase_Coherent", "Contrast_Masking_Phase_Incoherent"]
+    test_class_list = [globals()[name] for name in test_classes_2]
     suffix = "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
     train_dataset_name_list = ['CIFAR-100']
@@ -85,7 +87,7 @@ if __name__ == '__main__':
             model_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}.pth'
             if os.path.exists(model_path):
                 model.load_state_dict(torch.load(model_path, map_location=device))
-                test_model(model, testloader, device, test_classes, test_class_list, resolution)
+                test_model(model, testloader, device, test_classes_2, test_class_list, resolution)
             else:
                 print(f"❌ Model weights not found at {model_path}")
 
