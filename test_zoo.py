@@ -246,7 +246,7 @@ class Contrast_Masking_Phase_Coherent:
 
     def test_models(self, model, resolution=None):
         Spearman_matrix_score = torch.zeros(len(self.gt_x_mask_C), len(self.multiplier_list), device='cuda')
-        for contrast_mask_index in tqdm(range(len(self.gt_x_mask_C))):
+        for contrast_mask_index in range(len(self.gt_x_mask_C)):
             contrast_mask_value = self.gt_x_mask_C[contrast_mask_index]
             contrast_test_value = self.gt_y_test_C[contrast_mask_index]
             for multiplier_index, multiplier_value in enumerate(self.multiplier_list):
@@ -314,7 +314,7 @@ class Contrast_Masking_Phase_Incoherent:
 
     def test_models(self, model, resolution=None):
         Spearman_matrix_score = torch.zeros(len(self.gt_x_mask_C), len(self.multiplier_list), device='cuda')
-        for contrast_mask_index in tqdm(range(len(self.gt_x_mask_C))):
+        for contrast_mask_index in range(len(self.gt_x_mask_C)):
             contrast_mask_value = self.gt_x_mask_C[contrast_mask_index]
             contrast_test_value = self.gt_y_test_C[contrast_mask_index]
             for multiplier_index, multiplier_value in enumerate(self.multiplier_list):
