@@ -13,6 +13,8 @@ from torchsummary import summary
 import io
 import sys
 from test_zoo import *
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 set_seed(66)
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
