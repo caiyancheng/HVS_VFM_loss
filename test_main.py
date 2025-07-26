@@ -40,7 +40,7 @@ def test_model(model, testloader, device, test_classes, test_class_list, resolut
     acc = 100. * correct / total
     print(f"✅ Accuracy: {acc:.2f}%")
 
-    for test_name, test_class in enumerate(test_classes, test_class_list):
+    for test_name, test_class in zip(test_classes, test_class_list):
         test_instance = test_class(sample_num=10)
         loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution) * 2)
         print(f"Testing {test_name} Loss: {loss_test_hvs:.2f}")
