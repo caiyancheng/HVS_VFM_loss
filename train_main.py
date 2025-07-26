@@ -41,7 +41,7 @@ def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, tes
         outputs = model(inputs)
         loss = criterion(outputs, targets)
         loss_test_hvs_list = []
-        for test_class in tqdm(test_class_list):
+        for test_class in test_class_list:
             test_instance = test_class(sample_num=10)
             loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
             loss_test_hvs_list.append(loss_test_hvs)
