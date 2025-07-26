@@ -14,10 +14,10 @@ from Contrast_masking_generator.generate_plot_contrast_masking_gabor_on_noise im
 from tqdm import tqdm
 import torch.nn.functional as F
 import json
-from scipy.optimize import minimize, brute, differential_evolution, root_scalar
-import gc
-from scipy.stats import pearsonr, spearmanr
-from torchviz import make_dot
+# from scipy.optimize import minimize, brute, differential_evolution, root_scalar
+# import gc
+# from scipy.stats import pearsonr, spearmanr
+# from torchviz import make_dot
 import cv2
 
 def convert_numpy_to_python(data):

@@ -1,18 +1,13 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-import numpy as np
+from tqdm import tqdm
 import torch.optim as optim
 import torch.nn as nn
 from dataset_load import *
-import itertools
 from model_zoo import model_create
 from set_random_seed import set_seed
 set_seed(66)
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-from color_space_transform_cyc import Color_space_transform
-from tqdm import tqdm
-import math
-from lpyr_dec import *
 from torchsummary import summary
 import io
 import sys
@@ -120,8 +115,8 @@ if __name__ == '__main__':
             testloader = dataset_load(dataset_name=dataset_name, type='test', batch_size=batch_size)
             model = model_create(model_name=model_name, dataset_name=dataset_name, pretrained=True)
             model.to(device)
-            optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+            optimizer = optim.SGD(model.parameters(), lr=0.02, momentum=0.9, weight_decay=5e-4)
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
             save_path = (f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}.pth')
             log_path = (f'../HVS_VFM_loss_logs/log_{model_name}_{dataset_name}.txt')
@@ -145,7 +140,7 @@ if __name__ == '__main__':
                     log_file_path=log_path,
                     resolution=resolution,
                     test_class_list=test_class_list,
-                    max_epochs=100,
+                    max_epochs=20,
                 )
             except Exception as e:
                 print(f"Error occurred: {e}")
