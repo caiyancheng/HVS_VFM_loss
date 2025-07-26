@@ -35,7 +35,7 @@ def compute_ppd(resolution, diagonal_size_inches, viewing_distance_meters):
 def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, test_class_list, resolution):
     model.train()
     running_loss = 0.0
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
+    for batch_idx, (inputs, targets) in tqdm(enumerate(trainloader)):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
