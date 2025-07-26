@@ -40,12 +40,13 @@ def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, tes
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        loss_test_hvs_list = []
-        for test_class in test_class_list:
-            test_instance = test_class(sample_num=10)
-            loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
-            loss_test_hvs_list.append(loss_test_hvs)
-        loss += sum(loss_test_hvs_list)
+        # if batch_idx % 100 == 0:
+        #     loss_test_hvs_list = []
+        #     for test_class in test_class_list:
+        #         test_instance = test_class(sample_num=10)
+        #         loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
+        #         loss_test_hvs_list.append(loss_test_hvs)
+        #     loss += sum(loss_test_hvs_list)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
