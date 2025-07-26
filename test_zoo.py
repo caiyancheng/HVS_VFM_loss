@@ -1,8 +1,8 @@
 import numpy as np
 import os
-os.environ["PATH"] += os.pathsep + r"D:\App_real\Graphviz\bin"
+# os.environ["PATH"] += os.pathsep + r"D:\App_real\Graphviz\bin"
 import torch
-torch.hub.set_dir(r'E:\Torch_hub')
+torch.hub.set_dir(r'../Torch_hub')
 from display_encoding import display_encode
 display_encode_tool = display_encode(400)
 import math

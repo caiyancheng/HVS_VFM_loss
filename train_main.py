@@ -1,19 +1,23 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+import argparse
+import math
+import numpy as np
 from tqdm import tqdm
 import torch.optim as optim
 import torch.nn as nn
 from dataset_load import *
 from model_zoo import model_create
 from set_random_seed import set_seed
-set_seed(66)
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 from torchsummary import summary
 import io
 import sys
 from test_zoo import *
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+set_seed(66)
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 criterion = nn.CrossEntropyLoss()
+
 class Tee:
     def __init__(self, *files):
         self.files = files
@@ -40,18 +44,16 @@ def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, tes
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        # if batch_idx % 100 == 0:
-        #     loss_test_hvs_list = []
-        #     for test_class in test_class_list:
-        #         test_instance = test_class(sample_num=10)
-        #         loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
-        #         loss_test_hvs_list.append(loss_test_hvs)
-        #     loss += sum(loss_test_hvs_list)
+        if batch_idx % 50 == 0:
+            loss_test_hvs_list = []
+            for test_class in test_class_list:
+                test_instance = test_class(sample_num=10)
+                loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
+                loss_test_hvs_list.append(loss_test_hvs)
+            loss += sum(loss_test_hvs_list)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-
-
     print(f"[Epoch {epoch}] Training Loss: {running_loss / len(trainloader):.3f}")
 
 def test_one_epoch(model, testloader, device, epoch):
@@ -90,7 +92,6 @@ def train_model(model, trainloader, testloader, optimizer, scheduler, criterion,
             log_file.write(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%\n")
             log_file.flush()
             scheduler.step()
-            # 保存最好的模型
             if acc > best_acc:
                 best_acc = acc
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -98,20 +99,35 @@ def train_model(model, trainloader, testloader, optimizer, scheduler, criterion,
                 print(f"✅ Saved best model with accuracy {best_acc:.2f}%")
                 log_file.write(f"Saved best model with accuracy {best_acc:.2f}%\n")
 
+# ✅ 简写字典
+test_special_name_dict = {
+    "Contrast_Detection_Area": "CDA",
+    "Contrast_Detection_Luminance": "CDL",
+    "Contrast_Detection_SpF_Gabor_Ach": "CDSGA",
+    "Contrast_Masking_Phase_Coherent": "CMPC",
+    "Contrast_Masking_Phase_Incoherent": "CMPI"
+}
+
 if __name__ == '__main__':
+    # ✅ 命令行参数解析
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test_classes', nargs='+', default=[], help='List of test class names to use')
+    args = parser.parse_args()
+
+    test_classes = args.test_classes
+    test_class_list = [globals()[name] for name in test_classes]
+    suffix = "_".join([test_special_name_dict.get(name, name) for name in test_classes])
+
     train_dataset_name_list = ['CIFAR-100']
     model_name_list = ['resnet18', 'resnet34']
-    resolution = [32, 32] #64,64
-    batch_size = 128 #* 8
+    resolution = [32, 32]
+    batch_size = 128
     skip_trained_model = False
-    test_classes = ["Contrast_Detection_Area", "Contrast_Detection_Luminance", "Contrast_Detection_SpF_Gabor_Ach", "Contrast_Masking_Phase_Coherent", "Contrast_Masking_Phase_Incoherent"]
-    # test_classes = ["Contrast_Masking_Phase_Coherent"]
-    test_class_list = [globals()[test_class] for test_class in test_classes]
 
     for dataset_name in train_dataset_name_list:
         for model_name in model_name_list:
             set_seed(66)
-            print(f"Dataset: {dataset_name}, Model: {model_name}")
+            print(f"Dataset: {dataset_name}, Model: {model_name}, Tests: {test_classes}")
             trainloader = dataset_load(dataset_name=dataset_name, type='train', batch_size=batch_size)
             testloader = dataset_load(dataset_name=dataset_name, type='test', batch_size=batch_size)
             model = model_create(model_name=model_name, dataset_name=dataset_name, pretrained=True)
@@ -119,9 +135,8 @@ if __name__ == '__main__':
             optimizer = optim.SGD(model.parameters(), lr=0.02, momentum=0.9, weight_decay=5e-4)
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
-            save_path = (f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}.pth')
-            log_path = (f'../HVS_VFM_loss_logs/log_{model_name}_{dataset_name}.txt')
-            # 如果日志文件存在，说明训练已经完成，跳过
+            save_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}.pth'
+            log_path = f'../HVS_VFM_loss_logs/log_{model_name}_{dataset_name}_{suffix}.txt'
             if os.path.exists(log_path) and skip_trained_model:
                 print(f"🚫 Skipping: already trained — {log_path}")
                 continue
@@ -144,9 +159,4 @@ if __name__ == '__main__':
                     max_epochs=20,
                 )
             except Exception as e:
-                print(f"Error occurred: {e}")
-
-
-
-
-
+                print(f"❌ Error occurred: {e}")
