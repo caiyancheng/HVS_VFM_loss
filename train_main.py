@@ -44,7 +44,7 @@ def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, tes
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        if batch_idx % 50 == 0:
+        if batch_idx % 10 == 0:
             loss_test_hvs_list = []
             for test_name, test_class in zip(test_classes, test_class_list):
                 test_instance = test_class(sample_num=10)
