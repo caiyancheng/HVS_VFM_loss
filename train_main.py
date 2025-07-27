@@ -119,7 +119,7 @@ if __name__ == '__main__':
     suffix = "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
     train_dataset_name_list = ['CIFAR-100']
-    model_name_list = ['resnet34']#, 'resnet34']
+    model_name_list = ['resnet18', 'resnet34']
     resolution = [32, 32]
     batch_size = 128
     skip_trained_model = False
