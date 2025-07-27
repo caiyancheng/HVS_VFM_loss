@@ -36,7 +36,7 @@ def compute_ppd(resolution, diagonal_size_inches, viewing_distance_meters):
     display_ppd = 1 / pix_deg
     return display_ppd
 
-def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, test_class_list, resolution):
+def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
     model.train()
     running_loss = 0.0
     for batch_idx, (inputs, targets) in tqdm(enumerate(trainloader)):
@@ -44,11 +44,12 @@ def train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, tes
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        if batch_idx % 50 == 0:
+        if batch_idx % 10 == 0:
             loss_test_hvs_list = []
-            for test_class in test_class_list:
+            for test_name, test_class in zip(test_classes, test_class_list):
                 test_instance = test_class(sample_num=10)
                 loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
+                print(f"Testing {test_name} Loss: {loss_test_hvs:.2f}")
                 loss_test_hvs_list.append(loss_test_hvs)
             loss += sum(loss_test_hvs_list)
         loss.backward()
@@ -71,7 +72,7 @@ def test_one_epoch(model, testloader, device, epoch):
     print(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%")
     return acc
 
-def train_model(model, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, log_file_path, resolution, test_class_list, max_epochs=100):
+def train_model(model, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, log_file_path, resolution, test_classes, test_class_list, max_epochs=100):
     best_acc = 0.0
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
     with open(log_file_path, 'w') as log_file:
@@ -87,7 +88,7 @@ def train_model(model, trainloader, testloader, optimizer, scheduler, criterion,
         log_file.write('\n')
         log_file.write(f"# Model: {model_name}, Dataset: {dataset_name}\n")
         for epoch in tqdm(range(1, max_epochs + 1)):
-            train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, test_class_list, resolution)
+            train_one_epoch(model, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution)
             acc = test_one_epoch(model, testloader, device, epoch)
             log_file.write(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%\n")
             log_file.flush()
@@ -155,6 +156,7 @@ if __name__ == '__main__':
                     save_path=save_path,
                     log_file_path=log_path,
                     resolution=resolution,
+                    test_classes=test_classes,
                     test_class_list=test_class_list,
                     max_epochs=20,
                 )
