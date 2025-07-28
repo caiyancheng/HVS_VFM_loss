@@ -48,7 +48,7 @@ def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        if batch_idx % 20 == 0 and epoch >= 5:
+        if (batch_idx % 20 == 0) and epoch >= 5:
             loss_test_hvs_list = []
             for test_name, test_class in zip(test_classes, test_class_list):
                 test_instance = test_class(sample_num=10)
@@ -120,7 +120,7 @@ test_special_name_dict = {
 if __name__ == '__main__':
     # ✅ 命令行参数解析
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_classes', nargs='+', default=[], help='List of test class names to use')
+    parser.add_argument('--test_classes', nargs='+', default=["Contrast_Masking_Phase_Coherent"], help='List of test class names to use')
     args = parser.parse_args()
 
     test_classes = args.test_classes
