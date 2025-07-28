@@ -57,7 +57,7 @@ def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device
                 test_instance = test_class(sample_num=10)
                 loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
                 print(f"Testing {test_name} Loss: {loss_test_hvs:.2f}")
-                loss_test_hvs_list.append(loss_test_hvs)
+                loss_test_hvs_list.append(0.1 * loss_test_hvs)
             loss += sum(loss_test_hvs_list)
         loss.backward()
         optimizer.step()
