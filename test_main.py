@@ -1,5 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import argparse
 import math
 import numpy as np
@@ -61,7 +62,7 @@ test_special_name_dict = {
 if __name__ == '__main__':
     # ✅ 命令行参数解析
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_classes', nargs='+', default=[], help='List of test class names to use')
+    parser.add_argument('--test_classes', nargs='+', default=["Contrast_Masking_Phase_Coherent"], help='List of test class names to use')
     args = parser.parse_args()
 
     test_classes = args.test_classes
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     suffix = "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
     train_dataset_name_list = ['CIFAR-100']
-    model_name_list = ['resnet34'] #['resnet18', 'resnet34']
+    model_name_list = ['resnet18'] #['resnet18', 'resnet34']
     resolution = [32, 32]
     batch_size = 128
     skip_trained_model = False
@@ -86,7 +87,7 @@ if __name__ == '__main__':
             model.eval()
             model_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}.pth'
             if os.path.exists(model_path):
-                model.load_state_dict(torch.load(model_path, map_location=device))
+                model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
                 test_model(model, testloader, device, test_classes_2, test_class_list, resolution)
             else:
                 print(f"❌ Model weights not found at {model_path}")

@@ -19,6 +19,7 @@ import json
 # from scipy.stats import pearsonr, spearmanr
 # from torchviz import make_dot
 import cv2
+import matplotlib.pyplot as plt
 
 def convert_numpy_to_python(data):
     if isinstance(data, dict):
@@ -34,6 +35,16 @@ def convert_numpy_to_python(data):
     else:
         return data
 
+plot_ticks_label_dict = {
+            'contrast_detection_SpF_Gabor_ach': [[0.5, 1, 2, 4, 8, 16, 32], [1, 10, 100, 1000], 'Spatial Frequency (cpd)', 'Sensitivity'],
+            'contrast_detection_SpF_Noise_ach': [[0.5, 1, 2, 4, 8, 16, 32], [1, 10, 100, 1000], 'Spatial Frequency (cpd)', 'Sensitivity'],
+            'contrast_detection_SpF_Gabor_RG': [[0.5, 1, 2, 4, 8, 16, 32], [round(1/0.12,2), 10, 100, 1000], 'Spatial Frequency (cpd)', 'Sensitivity'],
+            'contrast_detection_SpF_Gabor_YV': [[0.5, 1, 2, 4, 8, 16, 32], [round(1/0.8,2), 10, 100, 1000], 'Spatial Frequency (cpd)', 'Sensitivity'],
+            'contrast_detection_luminance': [[0.1, 1, 10, 100], [1, 10, 100, 1000], 'Luminance (cd/m$^2$)', 'Sensitivity'],
+            'contrast_detection_area': [[0.1, 1], [1, 10, 100, 1000], 'Area (degree$^2$)', 'Sensitivity'],
+            'contrast_masking_phase_coherent_masking': [[0.01, 0.1], [0.01, 0.1], 'Mask Contrast', 'Test Contrast'],
+            'contrast_masking_phase_incoherent_masking': [[0.01, 0.1], [0.01, 0.1], 'Mask Contrast', 'Test Contrast'],
+        }
 class Contrast_Detection_Area:
     def __init__(self, sample_num):
         self.W = 224
@@ -98,6 +109,82 @@ class Contrast_Detection_Area:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
+    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+        with torch.no_grad():
+            radius_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
+            area_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
+            contrast_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
+            arccos_cos_similarity_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
+
+            for R_index in range(len(self.R_list)):
+                R_value = self.R_list[R_index]
+                A_value = self.Area_list[R_index]
+                for contrast_index in range(len(self.contrast_list)):
+                    contrast_value = self.contrast_list[contrast_index]
+                    T_L_array, R_L_array = generate_gabor_patch(W=self.W, H=self.H, R=R_value, rho=self.rho,
+                                                                O=self.O,
+                                                                L_b=self.L_b, contrast=contrast_value, ppd=self.ppd,
+                                                                color_direction='ach')
+                    radius_matrix[R_index, contrast_index] = R_value
+                    area_matrix[R_index, contrast_index] = A_value
+                    contrast_matrix[R_index, contrast_index] = contrast_value
+                    if resolution is not None:
+                        T_L_array = cv2.resize(T_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                        R_L_array = cv2.resize(R_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                    T_C_array = display_encode_tool.L2C_sRGB(T_L_array)
+                    T_C_tensor = torch.tensor(T_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    R_C_array = display_encode_tool.L2C_sRGB(R_L_array)
+                    R_C_tensor = torch.tensor(R_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    test_feature = model(T_C_tensor)
+                    reference_feature = model(R_C_tensor)
+                    cos_similarity = F.cosine_similarity(
+                        test_feature.reshape(1, -1),
+                        reference_feature.reshape(1, -1)
+                    )
+                    cos_similarity = torch.clamp(cos_similarity, -1 + 1e-6, 1 - 1e-6)
+                    arccos_cos_similarity_matrix[R_index, contrast_index] = np.arccos(np.array(cos_similarity.cpu())) / np.arccos(-1)
+
+        plot_ticks_label_list = plot_ticks_label_dict[self.test_short_name]
+        X_ticks = plot_ticks_label_list[0]
+        Y_ticks = plot_ticks_label_list[1]
+        X_label = plot_ticks_label_list[2]
+        Y_label = plot_ticks_label_list[3]
+        plot_X_matrix = area_matrix
+        plot_Y_matrix = 1 / contrast_matrix
+        plot_score_matrix = arccos_cos_similarity_matrix
+        gt_result_X_list = self.castleCSF_result_area_list
+        gt_result_Y_list = self.castleCSF_result_sensitivity_list
+        plot_figure_name = f'{model_name}_arccos_epoch{epoch}'
+        if resolution is not None:
+            plot_figure_name += f'_{resolution[0]}_{resolution[1]}'
+        plt.figure(figsize=(4.3,3), dpi=300)
+        levels = np.linspace(0, 1, 200)
+        plt.contourf(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                     levels=levels, cmap='rainbow', alpha=0.3)
+        plt.contour(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                    levels=levels, cmap='rainbow', linewidths=1)
+        plt.plot(gt_result_X_list, gt_result_Y_list, 'k', linestyle='--', linewidth=2,
+                 label='castleCSF prediction')
+        plt.xlim([plot_X_matrix.min(), plot_X_matrix.max()])
+        plt.ylim([plot_Y_matrix.min(), plot_Y_matrix.max()])
+        plt.xlabel(X_label, fontsize=12)
+        plt.ylabel(Y_label, fontsize=12)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(X_ticks, X_ticks)
+        plt.yticks(Y_ticks, Y_ticks)
+        plt.tight_layout()
+        plt.legend(loc='lower right')
+        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        os.makedirs(save_figure_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
+                    bbox_inches='tight', pad_inches=0.02)
+        plt.close()
+
+
+
 class Contrast_Detection_Luminance:
     def __init__(self, sample_num):
         self.W = 224
@@ -159,6 +246,77 @@ class Contrast_Detection_Luminance:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
+    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+        with torch.no_grad():
+            L_b_matrix = np.zeros([len(self.L_b_list), len(self.contrast_list)])
+            contrast_matrix = np.zeros([len(self.L_b_list), len(self.contrast_list)])
+            arccos_cos_similarity_matrix = np.zeros([len(self.L_b_list), len(self.contrast_list)])
+
+            for L_b_index in range(len(self.L_b_list)):
+                L_b_value = self.L_b_list[L_b_index]
+                for contrast_index in range(len(self.contrast_list)):
+                    contrast_value = self.contrast_list[contrast_index]
+                    T_L_array, R_L_array = generate_gabor_patch(W=self.W, H=self.H, R=self.R, rho=self.rho,
+                                                                O=self.O,
+                                                                L_b=L_b_value, contrast=contrast_value, ppd=self.ppd,
+                                                                color_direction='ach')
+                    L_b_matrix[L_b_index, contrast_index] = L_b_value
+                    contrast_matrix[L_b_index, contrast_index] = contrast_value
+                    if resolution is not None:
+                        T_L_array = cv2.resize(T_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                        R_L_array = cv2.resize(R_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                    T_C_array = display_encode_tool.L2C_sRGB(T_L_array)
+                    T_C_tensor = torch.tensor(T_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    R_C_array = display_encode_tool.L2C_sRGB(R_L_array)
+                    R_C_tensor = torch.tensor(R_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    test_feature = model(T_C_tensor)
+                    reference_feature = model(R_C_tensor)
+                    cos_similarity = F.cosine_similarity(
+                        test_feature.reshape(1, -1),
+                        reference_feature.reshape(1, -1)
+                    )
+                    cos_similarity = torch.clamp(cos_similarity, -1 + 1e-6, 1 - 1e-6)
+                    arccos_cos_similarity_matrix[L_b_index, contrast_index] = np.arccos(np.array(cos_similarity.cpu())) / np.arccos(-1)
+
+        plot_ticks_label_list = plot_ticks_label_dict[self.test_short_name]
+        X_ticks = plot_ticks_label_list[0]
+        Y_ticks = plot_ticks_label_list[1]
+        X_label = plot_ticks_label_list[2]
+        Y_label = plot_ticks_label_list[3]
+        plot_X_matrix = L_b_matrix
+        plot_Y_matrix = 1 / contrast_matrix
+        plot_score_matrix = arccos_cos_similarity_matrix
+        gt_result_X_list = self.castleCSF_result_L_list
+        gt_result_Y_list = self.castleCSF_result_sensitivity_list
+        plot_figure_name = f'{model_name}_arccos_epoch{epoch}'
+        if resolution is not None:
+            plot_figure_name += f'_{resolution[0]}_{resolution[1]}'
+        plt.figure(figsize=(4.3,3), dpi=300)
+        levels = np.linspace(0, 1, 200)
+        plt.contourf(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                     levels=levels, cmap='rainbow', alpha=0.3)
+        plt.contour(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                    levels=levels, cmap='rainbow', linewidths=1)
+        plt.plot(gt_result_X_list, gt_result_Y_list, 'k', linestyle='--', linewidth=2,
+                 label='castleCSF prediction')
+        plt.xlim([plot_X_matrix.min(), plot_X_matrix.max()])
+        plt.ylim([plot_Y_matrix.min(), plot_Y_matrix.max()])
+        plt.xlabel(X_label, fontsize=12)
+        plt.ylabel(Y_label, fontsize=12)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(X_ticks, X_ticks)
+        plt.yticks(Y_ticks, Y_ticks)
+        plt.tight_layout()
+        plt.legend(loc='lower right')
+        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        os.makedirs(save_figure_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
+                    bbox_inches='tight', pad_inches=0.02)
+        plt.close()
+
 class Contrast_Detection_SpF_Gabor_Ach:
     def __init__(self, sample_num):
         self.W = 224
@@ -218,6 +376,77 @@ class Contrast_Detection_SpF_Gabor_Ach:
         loss = 1 - correlation_pearson
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
+
+    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+        with torch.no_grad():
+            rho_matrix = np.zeros([len(self.rho_list), len(self.contrast_list)])
+            contrast_matrix = np.zeros([len(self.rho_list), len(self.contrast_list)])
+            arccos_cos_similarity_matrix = np.zeros([len(self.rho_list), len(self.contrast_list)])
+
+            for rho_index in range(len(self.rho_list)):
+                rho_value = self.rho_list[rho_index]
+                for contrast_index in range(len(self.contrast_list)):
+                    contrast_value = self.contrast_list[contrast_index]
+                    T_L_array, R_L_array = generate_gabor_patch(W=self.W, H=self.H, R=self.R, rho=rho_value,
+                                                                O=self.O,
+                                                                L_b=self.L_b, contrast=contrast_value, ppd=self.ppd,
+                                                                color_direction='ach')
+                    rho_matrix[rho_index, contrast_index] = rho_value
+                    contrast_matrix[rho_index, contrast_index] = contrast_value
+                    if resolution is not None:
+                        T_L_array = cv2.resize(T_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                        R_L_array = cv2.resize(R_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                    T_C_array = display_encode_tool.L2C_sRGB(T_L_array)
+                    T_C_tensor = torch.tensor(T_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    R_C_array = display_encode_tool.L2C_sRGB(R_L_array)
+                    R_C_tensor = torch.tensor(R_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    test_feature = model(T_C_tensor)
+                    reference_feature = model(R_C_tensor)
+                    cos_similarity = F.cosine_similarity(
+                        test_feature.reshape(1, -1),
+                        reference_feature.reshape(1, -1)
+                    )
+                    cos_similarity = torch.clamp(cos_similarity, -1 + 1e-6, 1 - 1e-6)
+                    arccos_cos_similarity_matrix[rho_index, contrast_index] = np.arccos(np.array(cos_similarity.cpu())) / np.arccos(-1)
+
+        plot_ticks_label_list = plot_ticks_label_dict[self.test_short_name]
+        X_ticks = plot_ticks_label_list[0]
+        Y_ticks = plot_ticks_label_list[1]
+        X_label = plot_ticks_label_list[2]
+        Y_label = plot_ticks_label_list[3]
+        plot_X_matrix = rho_matrix
+        plot_Y_matrix = 1 / contrast_matrix
+        plot_score_matrix = arccos_cos_similarity_matrix
+        gt_result_X_list = self.castleCSF_result_rho_list
+        gt_result_Y_list = self.castleCSF_result_sensitivity_list
+        plot_figure_name = f'{model_name}_arccos_epoch{epoch}'
+        if resolution is not None:
+            plot_figure_name += f'_{resolution[0]}_{resolution[1]}'
+        plt.figure(figsize=(4.3,3), dpi=300)
+        levels = np.linspace(0, 1, 200)
+        plt.contourf(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                     levels=levels, cmap='rainbow', alpha=0.3)
+        plt.contour(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                    levels=levels, cmap='rainbow', linewidths=1)
+        plt.plot(gt_result_X_list, gt_result_Y_list, 'k', linestyle='--', linewidth=2,
+                 label='castleCSF prediction')
+        plt.xlim([plot_X_matrix.min(), plot_X_matrix.max()])
+        plt.ylim([plot_Y_matrix.min(), plot_Y_matrix.max()])
+        plt.xlabel(X_label, fontsize=12)
+        plt.ylabel(Y_label, fontsize=12)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(X_ticks, X_ticks)
+        plt.yticks(Y_ticks, Y_ticks)
+        plt.tight_layout()
+        plt.legend(loc='lower right')
+        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        os.makedirs(save_figure_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
+                    bbox_inches='tight', pad_inches=0.02)
+        plt.close()
 
 class Contrast_Masking_Phase_Coherent:
     def __init__(self, sample_num):
@@ -286,6 +515,79 @@ class Contrast_Masking_Phase_Coherent:
         loss = 1 - correlation_pearson
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
+
+    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+        with torch.no_grad():
+            contrast_mask_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+            contrast_test_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+            arccos_cos_similarity_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+
+            for contrast_mask_index in range(len(self.contrast_mask_list)):
+                contrast_mask_value = self.contrast_mask_list[contrast_mask_index]
+                for contrast_test_index in range(len(self.contrast_test_list)):
+                    contrast_test_value = self.contrast_test_list[contrast_test_index]
+                    T_L_array, R_L_array = generate_contrast_masking(W=self.W, H=self.H, rho=self.rho, O=self.O,
+                                                                     L_b=self.L_b, contrast_mask=contrast_mask_value,
+                                                                     contrast_test=contrast_test_value, ppd=self.ppd,
+                                                                     gabor_radius=self.R)
+                    T_L_array = np.stack([T_L_array] * 3, axis=-1)
+                    R_L_array = np.stack([R_L_array] * 3, axis=-1)
+                    contrast_mask_matrix[contrast_mask_index, contrast_test_index] = contrast_mask_value
+                    contrast_test_matrix[contrast_mask_index, contrast_test_index] = contrast_test_value
+                    if resolution is not None:
+                        T_L_array = cv2.resize(T_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                        R_L_array = cv2.resize(R_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                    T_C_array = display_encode_tool.L2C_sRGB(T_L_array)
+                    T_C_tensor = torch.tensor(T_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    R_C_array = display_encode_tool.L2C_sRGB(R_L_array)
+                    R_C_tensor = torch.tensor(R_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    test_feature = model(T_C_tensor)
+                    reference_feature = model(R_C_tensor)
+                    cos_similarity = F.cosine_similarity(
+                        test_feature.reshape(1, -1),
+                        reference_feature.reshape(1, -1)
+                    )
+                    cos_similarity = torch.clamp(cos_similarity, -1 + 1e-6, 1 - 1e-6)
+                    arccos_cos_similarity_matrix[contrast_mask_index, contrast_test_index] = np.arccos(np.array(cos_similarity.cpu())) / np.arccos(-1)
+
+        plot_ticks_label_list = plot_ticks_label_dict[self.test_short_name]
+        X_ticks = plot_ticks_label_list[0]
+        Y_ticks = plot_ticks_label_list[1]
+        X_label = plot_ticks_label_list[2]
+        Y_label = plot_ticks_label_list[3]
+        plot_X_matrix = contrast_mask_matrix
+        plot_Y_matrix = contrast_test_matrix
+        plot_score_matrix = arccos_cos_similarity_matrix
+        gt_result_X_list = self.gt_x_mask_C
+        gt_result_Y_list = self.gt_y_test_C
+        plot_figure_name = f'{model_name}_arccos_epoch{epoch}'
+        if resolution is not None:
+            plot_figure_name += f'_{resolution[0]}_{resolution[1]}'
+        plt.figure(figsize=(4.3,3), dpi=300)
+        levels = np.linspace(0, 1, 200)
+        plt.contourf(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                     levels=levels, cmap='rainbow', alpha=0.3)
+        plt.contour(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                    levels=levels, cmap='rainbow', linewidths=1)
+        plt.plot(gt_result_X_list, gt_result_Y_list, 'k', linestyle='--', linewidth=2,
+                 label='Human Results', marker='o')
+        plt.xlim([plot_X_matrix.min(), plot_X_matrix.max()])
+        plt.ylim([plot_Y_matrix.min(), plot_Y_matrix.max()])
+        plt.xlabel(X_label, fontsize=12)
+        plt.ylabel(Y_label, fontsize=12)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(X_ticks, X_ticks)
+        plt.yticks(Y_ticks, Y_ticks)
+        plt.tight_layout()
+        plt.legend(loc='lower right')
+        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        os.makedirs(save_figure_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
+                    bbox_inches='tight', pad_inches=0.02)
+        plt.close()
 
 class Contrast_Masking_Phase_Incoherent:
     def __init__(self, sample_num):
@@ -358,3 +660,80 @@ class Contrast_Masking_Phase_Incoherent:
         loss = 1 - correlation_pearson
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
+
+    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+        with torch.no_grad():
+            contrast_mask_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+            contrast_test_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+            arccos_cos_similarity_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
+
+            for contrast_mask_index in range(len(self.contrast_mask_list)):
+                contrast_mask_value = self.contrast_mask_list[contrast_mask_index]
+                for contrast_test_index in range(len(self.contrast_test_list)):
+                    contrast_test_value = self.contrast_test_list[contrast_test_index]
+                    T_L_array, R_L_array = generate_contrast_masking_gabor_on_noise(W=self.W, H=self.H,
+                                                                                    sigma=self.R,
+                                                                                    rho=self.rho_test,
+                                                                                    Mask_upper_frequency=self.Mask_upper_frequency,
+                                                                                    L_b=self.L_b,
+                                                                                    contrast_mask=contrast_mask_value,
+                                                                                    contrast_test=contrast_test_value,
+                                                                                    ppd=self.ppd)
+                    T_L_array = np.stack([T_L_array] * 3, axis=-1)
+                    R_L_array = np.stack([R_L_array] * 3, axis=-1)
+                    contrast_mask_matrix[contrast_mask_index, contrast_test_index] = contrast_mask_value
+                    contrast_test_matrix[contrast_mask_index, contrast_test_index] = contrast_test_value
+                    if resolution is not None:
+                        T_L_array = cv2.resize(T_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                        R_L_array = cv2.resize(R_L_array, (resolution[0], resolution[1]),
+                                               interpolation=cv2.INTER_LINEAR)
+                    T_C_array = display_encode_tool.L2C_sRGB(T_L_array)
+                    T_C_tensor = torch.tensor(T_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    R_C_array = display_encode_tool.L2C_sRGB(R_L_array)
+                    R_C_tensor = torch.tensor(R_C_array, dtype=torch.float32).permute(2, 0, 1)[None, ...].cuda()
+                    test_feature = model(T_C_tensor)
+                    reference_feature = model(R_C_tensor)
+                    cos_similarity = F.cosine_similarity(
+                        test_feature.reshape(1, -1),
+                        reference_feature.reshape(1, -1)
+                    )
+                    cos_similarity = torch.clamp(cos_similarity, -1 + 1e-6, 1 - 1e-6)
+                    arccos_cos_similarity_matrix[contrast_mask_index, contrast_test_index] = np.arccos(np.array(cos_similarity.cpu())) / np.arccos(-1)
+
+        plot_ticks_label_list = plot_ticks_label_dict[self.test_short_name]
+        X_ticks = plot_ticks_label_list[0]
+        Y_ticks = plot_ticks_label_list[1]
+        X_label = plot_ticks_label_list[2]
+        Y_label = plot_ticks_label_list[3]
+        plot_X_matrix = contrast_mask_matrix
+        plot_Y_matrix = contrast_test_matrix
+        plot_score_matrix = arccos_cos_similarity_matrix
+        gt_result_X_list = self.gt_x_mask_C
+        gt_result_Y_list = self.gt_y_test_C
+        plot_figure_name = f'{model_name}_arccos_epoch{epoch}'
+        if resolution is not None:
+            plot_figure_name += f'_{resolution[0]}_{resolution[1]}'
+        plt.figure(figsize=(4.3,3), dpi=300)
+        levels = np.linspace(0, 1, 200)
+        plt.contourf(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                     levels=levels, cmap='rainbow', alpha=0.3)
+        plt.contour(plot_X_matrix, plot_Y_matrix, plot_score_matrix,
+                    levels=levels, cmap='rainbow', linewidths=1)
+        plt.plot(gt_result_X_list, gt_result_Y_list, 'k', linestyle='--', linewidth=2,
+                 label='Human Results', marker='o')
+        plt.xlim([plot_X_matrix.min(), plot_X_matrix.max()])
+        plt.ylim([plot_Y_matrix.min(), plot_Y_matrix.max()])
+        plt.xlabel(X_label, fontsize=12)
+        plt.ylabel(Y_label, fontsize=12)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xticks(X_ticks, X_ticks)
+        plt.yticks(Y_ticks, Y_ticks)
+        plt.tight_layout()
+        plt.legend(loc='lower right')
+        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        os.makedirs(save_figure_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
+                    bbox_inches='tight', pad_inches=0.02)
+        plt.close()
