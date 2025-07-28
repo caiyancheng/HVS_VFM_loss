@@ -39,11 +39,11 @@ def compute_ppd(resolution, diagonal_size_inches, viewing_distance_meters):
 def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
     model.train()
     running_loss = 0.0
-    if epoch == 1:
-        for test_name, test_class in zip(test_classes, test_class_list):
-            test_instance = test_class(sample_num=10)
-            test_instance.test_models_plot_contours(model_name=model_name, model=model, epoch=0, resolution=np.array(resolution)*2)
-    model.train()
+    # if epoch == 1:
+    #     for test_name, test_class in zip(test_classes, test_class_list):
+    #         test_instance = test_class(sample_num=10)
+    #         test_instance.test_models_plot_contours(model_name=model_name, model=model, epoch=0, resolution=np.array(resolution)*2)
+    # model.train()
     for batch_idx, (inputs, targets) in tqdm(enumerate(trainloader)):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
@@ -61,9 +61,9 @@ def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device
         optimizer.step()
         running_loss += loss.item()
 
-    for test_name, test_class in zip(test_classes, test_class_list):
-        test_instance = test_class(sample_num=10)
-        test_instance.test_models_plot_contours(model_name=model_name, model=model, epoch=epoch, resolution=np.array(resolution) * 2)
+    # for test_name, test_class in zip(test_classes, test_class_list):
+    #     test_instance = test_class(sample_num=10)
+    #     test_instance.test_models_plot_contours(model_name=model_name, model=model, epoch=epoch, resolution=np.array(resolution) * 2)
     print(f"[Epoch {epoch}] Training Loss: {running_loss / len(trainloader):.3f}")
 
 def test_one_epoch(model, testloader, device, epoch):
