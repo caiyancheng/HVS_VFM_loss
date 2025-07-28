@@ -120,7 +120,7 @@ test_special_name_dict = {
 if __name__ == '__main__':
     # ✅ 命令行参数解析
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_classes', nargs='+', default=["Contrast_Masking_Phase_Incoherent"], help='List of test class names to use')
+    parser.add_argument('--test_classes', nargs='+', default=[], help='List of test class names to use')
     args = parser.parse_args()
 
     test_classes = args.test_classes
