@@ -43,6 +43,7 @@ def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device
         for test_name, test_class in zip(test_classes, test_class_list):
             test_instance = test_class(sample_num=10)
             test_instance.test_models_plot_contours(model_name=model_name, model=model, epoch=0, resolution=np.array(resolution)*2)
+    model.train()
     for batch_idx, (inputs, targets) in tqdm(enumerate(trainloader)):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
