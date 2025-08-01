@@ -72,7 +72,7 @@ if __name__ == '__main__':
                 model.to(device)
 
                 # 加载模型权重
-                weight_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}'
+                weight_path = f'../HVS_VFM_loss_pth/best_{model_name}_{base_model_dataset}_{suffix}'
                 weight_path += '_hvs.pth' if len(test_classes) else '.pth'
 
                 if not os.path.exists(weight_path):
