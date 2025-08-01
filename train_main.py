@@ -119,8 +119,8 @@ def train_model(model_name, model, suffix, start_epoch, train_skip_iter, trainlo
                 best_acc_hvs = acc
                 os.makedirs(os.path.dirname(save_path_hvs), exist_ok=True)
                 torch.save(model.state_dict(), save_path_hvs)
-                print(f"✅ Saved best HVS help model with accuracy {best_acc:.2f}%")
-                log_file.write(f"Saved best HVS model with accuracy {best_acc:.2f}%\n")
+                print(f"✅ Saved best HVS help model with accuracy {best_acc_hvs:.2f}%")
+                log_file.write(f"Saved best HVS model with accuracy {best_acc_hvs:.2f}%\n")
 
 # ✅ 简写字典
 test_special_name_dict = {
