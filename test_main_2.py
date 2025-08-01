@@ -53,7 +53,6 @@ def test_model(model_name, model, dataset_name, testloader, test_classes, test_c
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_classes', nargs='+', default=[], help='List of test class names to use')
-    parser.add_argument('--load_hvs', action='store_true', help='Load HVS-trained model if available')
     args = parser.parse_args()
 
     test_classes = args.test_classes
@@ -78,7 +77,7 @@ if __name__ == '__main__':
 
             # 加载模型权重
             weight_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}'
-            weight_path += '_hvs.pth' if args.load_hvs else '.pth'
+            weight_path += '_hvs.pth' if len(test_classes) else '.pth'
 
             if not os.path.exists(weight_path):
                 print(f"🚫 Model weights not found: {weight_path}")
