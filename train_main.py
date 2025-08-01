@@ -37,21 +37,21 @@ def compute_ppd(resolution, diagonal_size_inches, viewing_distance_meters):
     display_ppd = 1 / pix_deg
     return display_ppd
 
-def train_one_epoch(model_name, model, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
+def train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
     model.train()
     running_loss = 0.0
     if epoch == 1:
         for test_name, test_class in zip(test_classes, test_class_list):
             test_instance = test_class(sample_num=10)
             model_copy = copy.deepcopy(model)
-            test_instance.test_models_plot_contours(model_name=model_name, model=model_copy, epoch=0, resolution=np.array(resolution)*2)
+            test_instance.test_models_plot_contours(model_name=model_name, model=model_copy, suffix=suffix, epoch=0, resolution=np.array(resolution)*2)
     # model.train()
     for batch_idx, (inputs, targets) in tqdm(enumerate(trainloader)):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        if (batch_idx % 50 == 0) and epoch >= 12:
+        if (batch_idx % train_skip_iter == 0) and epoch >= 12:
             loss_test_hvs_list = []
             for test_name, test_class in zip(test_classes, test_class_list):
                 test_instance = test_class(sample_num=10)
@@ -84,7 +84,7 @@ def test_one_epoch(model, testloader, device, epoch):
     print(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%")
     return acc
 
-def train_model(model_name, model, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, log_file_path, resolution, test_classes, test_class_list, max_epochs=100):
+def train_model(model_name, model, suffix, train_skip_iter, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, log_file_path, resolution, test_classes, test_class_list, max_epochs=100):
     best_acc = 0.0
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
     with open(log_file_path, 'w') as log_file:
@@ -100,7 +100,7 @@ def train_model(model_name, model, trainloader, testloader, optimizer, scheduler
         log_file.write('\n')
         log_file.write(f"# Model: {model_name}, Dataset: {dataset_name}\n")
         for epoch in tqdm(range(1, max_epochs + 1)):
-            train_one_epoch(model_name, model, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution)
+            train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution)
             acc = test_one_epoch(model, testloader, device, epoch)
             log_file.write(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%\n")
             log_file.flush()
@@ -129,7 +129,8 @@ if __name__ == '__main__':
 
     test_classes = args.test_classes
     test_class_list = [globals()[name] for name in test_classes]
-    suffix = "_".join([test_special_name_dict.get(name, name) for name in test_classes])
+    train_skip_iter = 50  # 测试20肯定不行
+    suffix = str(train_skip_iter) + "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
     train_dataset_name_list = ['CIFAR-100']
     model_name_list = ['resnet18', 'resnet34']
@@ -160,6 +161,8 @@ if __name__ == '__main__':
                 train_model(
                     model_name=model_name,
                     model=model,
+                    suffix=suffix,
+                    train_skip_iter=train_skip_iter,
                     trainloader=trainloader,
                     testloader=testloader,
                     optimizer=optimizer,

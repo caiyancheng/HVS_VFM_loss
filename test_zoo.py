@@ -109,7 +109,7 @@ class Contrast_Detection_Area:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
-    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+    def test_models_plot_contours(self, model_name, model, suffix, epoch, resolution=None):
         with torch.no_grad():
             radius_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
             area_matrix = np.zeros([len(self.R_list), len(self.contrast_list)])
@@ -177,7 +177,7 @@ class Contrast_Detection_Area:
         plt.yticks(Y_ticks, Y_ticks)
         plt.tight_layout()
         plt.legend(loc='lower right')
-        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        save_figure_dir = os.path.join(f'plot_contours/test_{suffix}/test_{self.test_short_name}', model_name)
         os.makedirs(save_figure_dir, exist_ok=True)
         plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
                     bbox_inches='tight', pad_inches=0.02)
@@ -246,7 +246,7 @@ class Contrast_Detection_Luminance:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
-    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+    def test_models_plot_contours(self, model_name, model, suffix, epoch, resolution=None):
         with torch.no_grad():
             L_b_matrix = np.zeros([len(self.L_b_list), len(self.contrast_list)])
             contrast_matrix = np.zeros([len(self.L_b_list), len(self.contrast_list)])
@@ -311,7 +311,7 @@ class Contrast_Detection_Luminance:
         plt.yticks(Y_ticks, Y_ticks)
         plt.tight_layout()
         plt.legend(loc='lower right')
-        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        save_figure_dir = os.path.join(f'plot_contours/test_{suffix}/test_{self.test_short_name}', model_name)
         os.makedirs(save_figure_dir, exist_ok=True)
         plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
                     bbox_inches='tight', pad_inches=0.02)
@@ -377,7 +377,7 @@ class Contrast_Detection_SpF_Gabor_Ach:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
-    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+    def test_models_plot_contours(self, model_name, model, suffix, epoch, resolution=None):
         with torch.no_grad():
             rho_matrix = np.zeros([len(self.rho_list), len(self.contrast_list)])
             contrast_matrix = np.zeros([len(self.rho_list), len(self.contrast_list)])
@@ -442,7 +442,7 @@ class Contrast_Detection_SpF_Gabor_Ach:
         plt.yticks(Y_ticks, Y_ticks)
         plt.tight_layout()
         plt.legend(loc='lower right')
-        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        save_figure_dir = os.path.join(f'plot_contours/test_{suffix}/test_{self.test_short_name}', model_name)
         os.makedirs(save_figure_dir, exist_ok=True)
         plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
                     bbox_inches='tight', pad_inches=0.02)
@@ -516,7 +516,7 @@ class Contrast_Masking_Phase_Coherent:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
-    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+    def test_models_plot_contours(self, model_name, model, suffix, epoch, resolution=None):
         with torch.no_grad():
             contrast_mask_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
             contrast_test_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
@@ -583,7 +583,7 @@ class Contrast_Masking_Phase_Coherent:
         plt.yticks(Y_ticks, Y_ticks)
         plt.tight_layout()
         plt.legend(loc='lower right')
-        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        save_figure_dir = os.path.join(f'plot_contours/test_{suffix}/test_{self.test_short_name}', model_name)
         os.makedirs(save_figure_dir, exist_ok=True)
         plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
                     bbox_inches='tight', pad_inches=0.02)
@@ -661,7 +661,7 @@ class Contrast_Masking_Phase_Incoherent:
         # make_dot(loss, params=dict(model.named_parameters())).render("computation_graph", format="pdf")
         return loss
 
-    def test_models_plot_contours(self, model_name, model, epoch, resolution=None):
+    def test_models_plot_contours(self, model_name, model, suffix, epoch, resolution=None):
         with torch.no_grad():
             contrast_mask_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
             contrast_test_matrix = np.zeros([len(self.contrast_mask_list), len(self.contrast_test_list)])
@@ -732,7 +732,7 @@ class Contrast_Masking_Phase_Incoherent:
         plt.yticks(Y_ticks, Y_ticks)
         plt.tight_layout()
         plt.legend(loc='lower right')
-        save_figure_dir = os.path.join(f'plot_contours/test_{self.test_short_name}', model_name)
+        save_figure_dir = os.path.join(f'plot_contours/test_{suffix}/test_{self.test_short_name}', model_name)
         os.makedirs(save_figure_dir, exist_ok=True)
         plt.savefig(os.path.join(save_figure_dir, plot_figure_name + '.png'), dpi=300,
                     bbox_inches='tight', pad_inches=0.02)
