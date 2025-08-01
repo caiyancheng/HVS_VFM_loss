@@ -64,7 +64,7 @@ if __name__ == '__main__':
             for corruption_type, severity in itertools.product(corruption_type_list, severity_list):
                 set_seed(66)
                 print(f"🧪 Testing: Dataset = {dataset_name}, Corruption_type = {corruption_type},"
-                      f"Severity = {severity}, Model = {model_name}, Tests = {test_classes}")
+                      f" Severity = {severity}, Model = {model_name}, Tests = {test_classes}")
 
                 # testloader = dataset_load(dataset_name=dataset_name, type='test', batch_size=batch_size)
                 testloader = dataset_load(dataset_name=dataset_name, type='test',

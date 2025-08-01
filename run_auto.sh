@@ -22,10 +22,18 @@ cd /auto/homes/yc613/Py_codes/HVS_VFM_loss/
 #python test_main_2.py --test_classes Contrast_Masking_Phase_Incoherent
 #python test_main_2.py --test_classes Contrast_Detection_SpF_Gabor_Ach Contrast_Detection_Area Contrast_Detection_Luminance Contrast_Masking_Phase_Coherent Contrast_Masking_Phase_Incoherent
 
-python test_main_cross_domain.py
-python test_main_cross_domain.py --test_classes Contrast_Detection_SpF_Gabor_Ach
-python test_main_cross_domain.py --test_classes Contrast_Detection_Area
-python test_main_cross_domain.py --test_classes Contrast_Detection_Luminance
-python test_main_cross_domain.py --test_classes Contrast_Masking_Phase_Coherent
-python test_main_cross_domain.py --test_classes Contrast_Masking_Phase_Incoherent
-python test_main_cross_domain.py --test_classes Contrast_Detection_SpF_Gabor_Ach Contrast_Detection_Area Contrast_Detection_Luminance Contrast_Masking_Phase_Coherent Contrast_Masking_Phase_Incoherent
+#python test_main_cross_domain.py
+#python test_main_cross_domain.py --test_classes Contrast_Detection_SpF_Gabor_Ach
+#python test_main_cross_domain.py --test_classes Contrast_Detection_Area
+#python test_main_cross_domain.py --test_classes Contrast_Detection_Luminance
+#python test_main_cross_domain.py --test_classes Contrast_Masking_Phase_Coherent
+#python test_main_cross_domain.py --test_classes Contrast_Masking_Phase_Incoherent
+#python test_main_cross_domain.py --test_classes Contrast_Detection_SpF_Gabor_Ach Contrast_Detection_Area Contrast_Detection_Luminance Contrast_Masking_Phase_Coherent Contrast_Masking_Phase_Incoherent
+
+python test_main_attack.py
+python test_main_attack.py --test_classes Contrast_Detection_SpF_Gabor_Ach
+python test_main_attack.py --test_classes Contrast_Detection_Area
+python test_main_attack.py --test_classes Contrast_Detection_Luminance
+python test_main_attack.py --test_classes Contrast_Masking_Phase_Coherent
+python test_main_attack.py --test_classes Contrast_Masking_Phase_Incoherent
+python test_main_attack.py --test_classes Contrast_Detection_SpF_Gabor_Ach Contrast_Detection_Area Contrast_Detection_Luminance Contrast_Masking_Phase_Coherent Contrast_Masking_Phase_Incoherent
