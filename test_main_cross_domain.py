@@ -50,6 +50,7 @@ if __name__ == '__main__':
     start_epoch = 12
     suffix = f"{train_skip_iter}_{start_epoch}" + "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
+    base_model_dataset = 'CIFAR-100'
     test_dataset_name_list = ['CIFAR-100-C']
     model_name_list = ['resnet18', 'resnet34']
     resolution = [32, 32]
@@ -67,7 +68,7 @@ if __name__ == '__main__':
                 # testloader = dataset_load(dataset_name=dataset_name, type='test', batch_size=batch_size)
                 testloader = dataset_load(dataset_name=dataset_name, type='test',
                                           corruption_type=corruption_type, severity=severity)
-                model = model_create(model_name=model_name, dataset_name=dataset_name, pretrained=False)
+                model = model_create(model_name=model_name, dataset_name=base_model_dataset, pretrained=False)
                 model.to(device)
 
                 # 加载模型权重
