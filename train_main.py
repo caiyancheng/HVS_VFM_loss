@@ -66,7 +66,7 @@ def train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, opt
     for test_name, test_class in zip(test_classes, test_class_list):
         test_instance = test_class(sample_num=10)
         model_copy = copy.deepcopy(model)
-        test_instance.test_models_plot_contours(model_name=model_name, model=model_copy, epoch=epoch, resolution=np.array(resolution) * 2)
+        test_instance.test_models_plot_contours(model_name=model_name, model=model_copy, suffix=suffix, epoch=epoch, resolution=np.array(resolution) * 2)
     print(f"[Epoch {epoch}] Training Loss: {running_loss / len(trainloader):.3f}")
 
 def test_one_epoch(model, testloader, device, epoch):
