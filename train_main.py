@@ -37,9 +37,10 @@ def compute_ppd(resolution, diagonal_size_inches, viewing_distance_meters):
     display_ppd = 1 / pix_deg
     return display_ppd
 
-def train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
+def train_one_epoch(model_name, model, suffix, start_epoch, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution):
     model.train()
     running_loss = 0.0
+    HVS_trained = False
     if epoch == 1:
         for test_name, test_class in zip(test_classes, test_class_list):
             test_instance = test_class(sample_num=10)
@@ -51,9 +52,10 @@ def train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, opt
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        if (batch_idx % train_skip_iter == 0) and epoch >= 12:
+        if (batch_idx % train_skip_iter == 0) and epoch >= start_epoch:
             loss_test_hvs_list = []
             for test_name, test_class in zip(test_classes, test_class_list):
+                HVS_trained = True
                 test_instance = test_class(sample_num=10)
                 loss_test_hvs = test_instance.test_models(model=model, resolution=np.array(resolution)*2)
                 print(f"Testing {test_name} Loss: {loss_test_hvs:.2f}")
@@ -68,6 +70,7 @@ def train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, opt
         model_copy = copy.deepcopy(model)
         test_instance.test_models_plot_contours(model_name=model_name, model=model_copy, suffix=suffix, epoch=epoch, resolution=np.array(resolution) * 2)
     print(f"[Epoch {epoch}] Training Loss: {running_loss / len(trainloader):.3f}")
+    return HVS_trained
 
 def test_one_epoch(model, testloader, device, epoch):
     model.eval()
@@ -84,8 +87,9 @@ def test_one_epoch(model, testloader, device, epoch):
     print(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%")
     return acc
 
-def train_model(model_name, model, suffix, train_skip_iter, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, log_file_path, resolution, test_classes, test_class_list, max_epochs=100):
+def train_model(model_name, model, suffix, start_epoch, train_skip_iter, trainloader, testloader, optimizer, scheduler, criterion, device, save_path, save_path_hvs, log_file_path, resolution, test_classes, test_class_list, max_epochs=100):
     best_acc = 0.0
+    best_acc_hvs = 0.0
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
     with open(log_file_path, 'w') as log_file:
         buf = io.StringIO()
@@ -100,7 +104,7 @@ def train_model(model_name, model, suffix, train_skip_iter, trainloader, testloa
         log_file.write('\n')
         log_file.write(f"# Model: {model_name}, Dataset: {dataset_name}\n")
         for epoch in tqdm(range(1, max_epochs + 1)):
-            train_one_epoch(model_name, model, suffix, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution)
+            HVS_trained = train_one_epoch(model_name, model, suffix, start_epoch, train_skip_iter, trainloader, optimizer, criterion, device, epoch, test_classes, test_class_list, resolution)
             acc = test_one_epoch(model, testloader, device, epoch)
             log_file.write(f"[Epoch {epoch}] Test Accuracy: {acc:.2f}%\n")
             log_file.flush()
@@ -111,6 +115,12 @@ def train_model(model_name, model, suffix, train_skip_iter, trainloader, testloa
                 torch.save(model.state_dict(), save_path)
                 print(f"✅ Saved best model with accuracy {best_acc:.2f}%")
                 log_file.write(f"Saved best model with accuracy {best_acc:.2f}%\n")
+            if acc > best_acc_hvs and HVS_trained:
+                best_acc_hvs = acc
+                os.makedirs(os.path.dirname(save_path_hvs), exist_ok=True)
+                torch.save(model.state_dict(), save_path_hvs)
+                print(f"✅ Saved best HVS help model with accuracy {best_acc:.2f}%")
+                log_file.write(f"Saved best HVS model with accuracy {best_acc:.2f}%\n")
 
 # ✅ 简写字典
 test_special_name_dict = {
@@ -130,7 +140,8 @@ if __name__ == '__main__':
     test_classes = args.test_classes
     test_class_list = [globals()[name] for name in test_classes]
     train_skip_iter = 50  # 测试20肯定不行
-    suffix = str(train_skip_iter) + "_".join([test_special_name_dict.get(name, name) for name in test_classes])
+    start_epoch = 12
+    suffix = f"{train_skip_iter}_{start_epoch}" + "_".join([test_special_name_dict.get(name, name) for name in test_classes])
 
     train_dataset_name_list = ['CIFAR-100']
     model_name_list = ['resnet18', 'resnet34']
@@ -150,6 +161,7 @@ if __name__ == '__main__':
             scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
             save_path = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}.pth'
+            save_path_hvs = f'../HVS_VFM_loss_pth/best_{model_name}_{dataset_name}_{suffix}_hvs.pth'
             log_path = f'../HVS_VFM_loss_logs/log_{model_name}_{dataset_name}_{suffix}.txt'
             if os.path.exists(log_path) and skip_trained_model:
                 print(f"🚫 Skipping: already trained — {log_path}")
@@ -162,6 +174,7 @@ if __name__ == '__main__':
                     model_name=model_name,
                     model=model,
                     suffix=suffix,
+                    start_epoch=start_epoch,
                     train_skip_iter=train_skip_iter,
                     trainloader=trainloader,
                     testloader=testloader,
@@ -170,6 +183,7 @@ if __name__ == '__main__':
                     criterion=criterion,
                     device=device,
                     save_path=save_path,
+                    save_path_hvs=save_path_hvs,
                     log_file_path=log_path,
                     resolution=resolution,
                     test_classes=test_classes,
